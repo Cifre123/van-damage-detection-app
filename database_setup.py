@@ -1,12 +1,17 @@
-import sqlite3
+import psycopg2
+import os
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
 
 def init_db():
-    conn = sqlite3.connect("van_damage_detection.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Create table if it doesn't exist
     cursor.execute('''CREATE TABLE IF NOT EXISTS van_reports (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id SERIAL PRIMARY KEY,
                         driver_name TEXT NOT NULL,
                         van_registration TEXT NOT NULL,
                         front_image TEXT,
@@ -16,6 +21,7 @@ def init_db():
                         inside_image TEXT,
                         damage_details TEXT,
                         previous_driver TEXT,
+                        damage_points TEXT,
                         report_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     
     conn.commit()
