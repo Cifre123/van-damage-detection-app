@@ -1,4 +1,9 @@
 streamlit
 pillow
-opencv-python
+psycopg2
 numpy
+smtplib
+email
+os
+json
+datetime
