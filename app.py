@@ -39,44 +39,54 @@ def save_image(van_id, driver_name, image, position):
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     save_path = os.path.join(van_dir, f"{position}_{timestamp}.jpg")
 
-    # Check if we need to draw damage markers
+    # Draw damage markers if available
     if f"damage_points_{position}" in st.session_state:
         draw = ImageDraw.Draw(image)
         for x, y, damage in st.session_state[f"damage_points_{position}"]:
-            draw.ellipse((x-5, y-5, x+5, y+5), fill="red", outline="red")
-            draw.text((x+10, y), damage, fill="red")
+            draw.ellipse((x-10, y-10, x+10, y+10), outline="red", width=3)  # Draw circle
+            draw.text((x+12, y), damage, fill="red")  # Add text label
 
     image.save(save_path)
     return save_path
 
 # Function to allow users to mark damage points on the image
 def draw_damage_interface(image, position):
-    """Allow users to mark damage points on an image and save it with markers."""
+    """Allow users to mark damage points on an image and display them."""
     
-    st.image(image, caption=f"Click on {position} image to mark damages", use_container_width=True)
+    # Initialize session storage for damage points
     if f"damage_points_{position}" not in st.session_state:
         st.session_state[f"damage_points_{position}"] = []
     
+    # Display the image
+    st.image(image, caption=f"Click on {position} image to mark damages", use_container_width=True)
+
     damage_type = st.selectbox("Select damage type:", ["Scratch", "Dent", "Crack"], key=f"damage_type_{position}")
-    
+
+    # Start marking mode
     if st.button("Start Marking Damage", key=f"start_mark_{position}"):
         st.session_state["marking_mode"] = position
         st.write("Click on the image to add damage markers.")
-    
+
     if st.session_state.get("marking_mode") == position:
         x = st.slider("X Coordinate", min_value=0, max_value=image.width, key=f"x_{position}")
         y = st.slider("Y Coordinate", min_value=0, max_value=image.height, key=f"y_{position}")
-        
+
         if st.button("Add Damage Point", key=f"add_damage_{position}"):
             st.session_state[f"damage_points_{position}"].append((x, y, damage_type))
-            st.session_state["marking_mode"] = None  # Disable marking mode after adding a point
+            st.session_state["marking_mode"] = None  # Exit marking mode
     
-    draw = ImageDraw.Draw(image)
+    # Draw circles on the image
+    image_with_marks = image.copy()
+    draw = ImageDraw.Draw(image_with_marks)
     for x, y, damage in st.session_state[f"damage_points_{position}"]:
-        draw.ellipse((x-5, y-5, x+5, y+5), fill="red", outline="red")
-        draw.text((x+10, y), damage, fill="red")
+        draw.ellipse((x-10, y-10, x+10, y+10), outline="red", width=3)  # Draw circle
+        draw.text((x+12, y), damage, fill="red")  # Add text label
     
-    return image
+    # Display the updated image with markings
+    st.image(image_with_marks, caption=f"Marked Damages on {position}", use_container_width=True)
+
+    return image_with_marks
+
 
 # Email Report Function
 def send_email_report(driver_name, previous_driver, van_registration, damage_details, images):
