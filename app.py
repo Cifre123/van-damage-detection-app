@@ -8,6 +8,10 @@ from datetime import datetime
 import smtplib
 from database_functions import add_report, get_previous_driver
 
+if "DATABASE_URL" not in os.environ:
+    os.environ["DATABASE_URL"] = st.secrets["DATABASE_URL"]
+
+st.write("Database URL:", os.getenv("DATABASE_URL"))
 # Database Connection
 DATABASE_URL = os.getenv("DATABASE_URL")
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
