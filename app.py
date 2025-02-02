@@ -23,6 +23,7 @@ def init_db():
                         inside_image TEXT,
                         damage_details TEXT,
                         previous_driver TEXT,
+                        damage_points TEXT,
                         report_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     
     conn.commit()
@@ -33,11 +34,18 @@ init_db()
 # Save image function
 def save_image(van_id, driver_name, image, position):
     """Save an image with marked damages."""
+    if image is None:
+        return ""
+
     van_dir = os.path.join("vans", van_id)
     os.makedirs(van_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     save_path = os.path.join(van_dir, f"{position}_{timestamp}.jpg")
+
+    # Convert image mode if needed
+    if image.mode != "RGB":
+        image = image.convert("RGB")
 
     # Draw damage markers if available
     if f"damage_points_{position}" in st.session_state:
@@ -52,8 +60,10 @@ def save_image(van_id, driver_name, image, position):
 # Function to allow users to mark damage points on the image
 def draw_damage_interface(image, position):
     """Allow users to mark damage points on an image and display them."""
-    
-    # Initialize session storage for damage points
+    if image is None:
+        st.warning(f"No image uploaded for {position}. Please upload an image first.")
+        return None
+
     if f"damage_points_{position}" not in st.session_state:
         st.session_state[f"damage_points_{position}"] = []
     
@@ -62,7 +72,6 @@ def draw_damage_interface(image, position):
 
     damage_type = st.selectbox("Select damage type:", ["Scratch", "Dent", "Crack"], key=f"damage_type_{position}")
 
-    # Start marking mode
     if st.button("Start Marking Damage", key=f"start_mark_{position}"):
         st.session_state["marking_mode"] = position
         st.write("Click on the image to add damage markers.")
@@ -73,8 +82,8 @@ def draw_damage_interface(image, position):
 
         if st.button("Add Damage Point", key=f"add_damage_{position}"):
             st.session_state[f"damage_points_{position}"].append((x, y, damage_type))
-            st.session_state["marking_mode"] = None  # Exit marking mode
-    
+            st.session_state["marking_mode"] = None  
+
     # Draw circles on the image
     image_with_marks = image.copy()
     draw = ImageDraw.Draw(image_with_marks)
@@ -86,7 +95,6 @@ def draw_damage_interface(image, position):
     st.image(image_with_marks, caption=f"Marked Damages on {position}", use_container_width=True)
 
     return image_with_marks
-
 
 # Email Report Function
 def send_email_report(driver_name, previous_driver, van_registration, damage_details, images):
@@ -106,12 +114,13 @@ def send_email_report(driver_name, previous_driver, van_registration, damage_det
     msg.set_content(body)
     
     for position, image_path in images.items():
-        with open(image_path, "rb") as img:
-            msg.add_attachment(img.read(), maintype="image", subtype="jpeg", filename=os.path.basename(image_path))
+        if image_path:
+            with open(image_path, "rb") as img:
+                msg.add_attachment(img.read(), maintype="image", subtype="jpeg", filename=os.path.basename(image_path))
     
     with smtplib.SMTP("smtp.gmail.com", 587) as server:
         server.starttls()
-        server.login("precisionlogistical@gmail.com", "hdrl lqcx fgtq yixb")
+        server.login("precisionlogistical@gmail.com", "your_app_password")
         server.send_message(msg)
 
 # Streamlit UI
@@ -134,8 +143,15 @@ if st.button("Submit Report", key="submit_report"):
     result = cursor.fetchone()
     previous_driver = result[0] if result else "Unknown"
     
-    image_paths = {position: save_image(van_registration, driver_name, Image.open(uploaded_image), position) if uploaded_image else "" for position, uploaded_image in uploaded_images.items()}
-    
+    # Convert uploaded images to PIL images before saving
+    image_paths = {}
+    for position, uploaded_image in uploaded_images.items():
+        if uploaded_image:
+            img = Image.open(uploaded_image)
+            image_paths[position] = save_image(van_registration, driver_name, img, position)
+        else:
+            image_paths[position] = ""
+
     cursor.execute("INSERT INTO van_reports (driver_name, van_registration, front_image, back_image, right_image, left_image, inside_image, damage_details, previous_driver) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                    (driver_name, van_registration, image_paths["Front"], image_paths["Back"], image_paths["Right"], image_paths["Left"], image_paths["Inside"], damage_details, previous_driver))
     
