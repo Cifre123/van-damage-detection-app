@@ -1,9 +1,6 @@
 streamlit
 pillow
-psycopg2
+psycopg2-binary
 numpy
-smtplib
-email
-os
-json
-datetime
+python-dotenv
+reportlab

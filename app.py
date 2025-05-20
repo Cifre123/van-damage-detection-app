@@ -33,13 +33,19 @@ def save_image(van_id, driver_name, image, position):
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     save_path = os.path.join(van_dir, f"{position}_{timestamp}.jpg")
 
+    # Convert image to RGB mode if it is in RGBA mode
+    if image.mode == 'RGBA':
+        image = image.convert('RGB')
+
+    # Draw damage points if available in session state
     if f"damage_points_{position}" in st.session_state:
         draw = ImageDraw.Draw(image)
         for x, y, damage in st.session_state[f"damage_points_{position}"]:
             draw.ellipse((x-10, y-10, x+10, y+10), outline="red", width=3)
             draw.text((x+12, y), damage, fill="red")
-    
-    image.save(save_path)
+
+    # Save the image as a JPEG
+    image.save(save_path, format='JPEG')
     return save_path
 
 # Email Report Function
